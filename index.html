@@ -11,7 +11,7 @@
   <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-None
+
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     body { background:#0f172a; color:#e2e8f0; font-family:system-ui,sans-serif; font-size:14px; overscroll-behavior:none; }
@@ -285,7 +285,13 @@ function App() {
     let ok = 0, fail = 0;
     let h = [...holdings], c = cash;
     const newTrades = [];
-    for (const line of lines) {
+    // 날짜 오름차순 정렬 (오래된 것부터 처리)
+    const sorted = [...lines].sort((a, b) => {
+      const da = a.split(",")[1]?.trim() || "";
+      const db = b.split(",")[1]?.trim() || "";
+      return da.localeCompare(db);
+    });
+    for (const line of sorted) {
       const parts = line.split(",");
       if (parts.length < 5) { fail++; continue; }
       const [ticker, dateRaw, priceStr, qtyStr, typeStr, memo] = parts;
