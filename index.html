@@ -205,7 +205,7 @@ function App() {
   const [parsedResult, setParsedResult] = useState(null);
   const [showAdd, setShowAdd]     = useState(false);
   const [showCorp, setShowCorp]   = useState(false);
-  const [nt, setNt] = useState({ ticker:"", qty:"", price:"", type:"buy", date:todayStr(), commission:0.25, memo:"" });
+  const [nt, setNt] = useState({ ticker:"", qty:"", price:"", type:"buy", date:todayStr(), time:"0930", commission:0.25, memo:"" });
   const [corp, setCorp] = useState({ ticker:"", type:"split", ratio:"", date:todayStr() });
   const [tvData, setTvData]       = useState("");
   const [copied, setCopied]       = useState(false);
@@ -312,19 +312,15 @@ function App() {
     let h = [...holdings], c = cash;
     const newTrades = [];
 
-    // 날짜 파싱 헬퍼: YYYYMMDDHHMM → 미국 동부 날짜(YYYY-MM-DD)
-    // 한국시간(KST=UTC+9) → 미국동부(EST=UTC-5, EDT=UTC-4)
-    // KST 00:00~13:59 = 전날 미국시간
-    // 즉 한국시간 HH < 14 이면 날짜 -1일
+    // 미국 날짜 추출 (표시용): 한국시간 00~13시 → -1일
     function toUSDate(dateRaw) {
       const ds = dateRaw.trim();
       const y = parseInt(ds.slice(0,4));
       const mo = parseInt(ds.slice(4,6)) - 1;
       const d = parseInt(ds.slice(6,8));
-      const h = parseInt(ds.slice(8,10));
-      // 한국새벽(00~13시) = 미국 전날
+      const hh = parseInt(ds.slice(8,10));
       const date = new Date(y, mo, d);
-      if (h < 14) date.setDate(date.getDate() - 1);
+      if (hh < 14) date.setDate(date.getDate() - 1);
       const yy = date.getFullYear();
       const mm = String(date.getMonth()+1).padStart(2,'0');
       const dd = String(date.getDate()).padStart(2,'0');
@@ -347,11 +343,16 @@ function App() {
       const memo = memoParts.join(",").trim();
       if (!ticker || !price || !qty || !type) { fail++; continue; }
 
-      const date = toUSDate(dateRaw);
+      const ds = dateRaw.trim();
+      const datetime = ds; // YYYYMMDDHHMM 원본 그대로 보존
+      const date = toUSDate(ds); // 표시용 미국 날짜
+
       const t = {
         id: Date.now() + ok,
         ticker: ticker.trim().toUpperCase(),
-        qty, price, type, date,
+        qty, price, type,
+        date,       // 표시용 YYYY-MM-DD (미국 날짜)
+        datetime,   // TV 출력용 원본 YYYYMMDDHHMM (한국시간)
         commission: settings.commissionRate,
         memo
       };
@@ -401,8 +402,8 @@ function App() {
 
   function genTVData(){
     const lines=trades.filter(t=>t.type==="buy"||t.type==="sell").map(t=>{
-      // 저장된 날짜는 이미 미국 날짜 기준 → 0930 고정
-      const d=t.date.replace(/-/g,"")+"0930";
+      // datetime(원본 YYYYMMDDHHMM) 있으면 그대로, 없으면 날짜+0930
+      const d = t.datetime || (t.date.replace(/-/g,"")+"0930");
       const type=t.type==="buy"?"매수":"매도";
       const memo=(t.memo||"").replace(/,/g,"").replace(/\//g,"");
       return `${t.ticker},${d},${t.price},${t.qty},${type},${memo}`;
@@ -609,6 +610,8 @@ function App() {
                     <input type="number" value={nt.commission} placeholder="0.25" onChange={e=>setNt(p=>({...p,commission:e.target.value}))} style={IS}/></div>
                   <div style={{gridColumn:"1/-1"}}><div style={{color:"#94a3b8",fontSize:11,marginBottom:4}}>날짜</div>
                     <input type="date" value={nt.date} onChange={e=>setNt(p=>({...p,date:e.target.value}))} style={IS}/></div>
+                  <div style={{gridColumn:"1/-1"}}><div style={{color:"#94a3b8",fontSize:11,marginBottom:4}}>시간 (HHMM, 한국시간)</div>
+                    <input value={nt.time} placeholder="예: 0930, 2315" onChange={e=>setNt(p=>({...p,time:e.target.value}))} style={IS}/></div>
                   <div style={{gridColumn:"1/-1"}}>
                     <div style={{color:"#94a3b8",fontSize:11,marginBottom:4}}>유형</div>
                     <div style={{display:"flex",gap:8}}>
@@ -624,8 +627,10 @@ function App() {
                   <div style={{gridColumn:"1/-1"}}>
                     <button onClick={()=>{
                       if(!nt.ticker||!nt.qty||!nt.price) return;
-                      addTrade({...nt,qty:parseFloat(nt.qty),price:parseFloat(nt.price),commission:parseFloat(nt.commission)});
-                      setShowAdd(false); setNt({ticker:"",qty:"",price:"",type:"buy",date:todayStr(),commission:settings.commissionRate,memo:""});
+                      const ds = nt.date.replace(/-/g,"");
+                      const datetime = ds + (nt.time||"0930").padStart(4,"0");
+                      addTrade({...nt,qty:parseFloat(nt.qty),price:parseFloat(nt.price),commission:parseFloat(nt.commission),datetime});
+                      setShowAdd(false); setNt({ticker:"",qty:"",price:"",type:"buy",date:todayStr(),time:"0930",commission:settings.commissionRate,memo:""});
                     }} style={{width:"100%",background:"#10b981",color:"#fff",border:"none",borderRadius:6,padding:10,cursor:"pointer",fontSize:14,fontWeight:600}}>✅ 추가</button>
                   </div>
                 </div>
