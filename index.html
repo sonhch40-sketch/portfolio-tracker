@@ -147,6 +147,13 @@ async function fetchPrice(ticker) {
 
 // ── 환율 fetch ──
 async function fetchExchangeRate() {
+  // 1순위: ExchangeRate-API (무료, CORS 허용)
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD", { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    return data?.rates?.KRW ? Math.round(data.rates.KRW) : null;
+  } catch {}
+  // 2순위: Frankfurter
   try {
     const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=KRW", { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
