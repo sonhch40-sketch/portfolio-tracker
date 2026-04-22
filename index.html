@@ -268,22 +268,24 @@ function App() {
   function applyTrade(t,hIn,cIn){
     let h=[...hIn], c=cIn;
     const comm=t.price*t.qty*((t.commission||0)/100);
+    const qty=Math.round(t.qty*10000)/10000; // 소수점 오차 방지
     if(t.type==="buy"){
       const idx=h.findIndex(x=>x.ticker===t.ticker);
       if(idx>=0){
-        const nq=h[idx].qty+t.qty;
-        const na=(h[idx].avgPrice*h[idx].qty+t.price*t.qty)/nq;
+        const nq=Math.round((h[idx].qty+qty)*10000)/10000;
+        const na=(h[idx].avgPrice*h[idx].qty+t.price*qty)/nq;
         h[idx]={...h[idx],qty:nq,avgPrice:na};
       } else {
-        h.push({ticker:t.ticker,qty:t.qty,avgPrice:t.price,currentPrice:t.price,color:COLORS[h.length%COLORS.length]});
+        h.push({ticker:t.ticker,qty,avgPrice:t.price,currentPrice:t.price,color:COLORS[h.length%COLORS.length]});
       }
-      c-=(t.price*t.qty+comm);
+      c-=(t.price*qty+comm);
     } else {
       const idx=h.findIndex(x=>x.ticker===t.ticker);
       if(idx>=0){
-        h[idx]={...h[idx],qty:h[idx].qty-t.qty};
-        if(h[idx].qty<=0) h.splice(idx,1);
-        c+=(t.price*t.qty-comm);
+        const nq=Math.round((h[idx].qty-qty)*10000)/10000;
+        c+=(t.price*qty-comm);
+        if(nq<=0.0001) h.splice(idx,1);
+        else h[idx]={...h[idx],qty:nq};
       }
     }
     return {h,c};
@@ -406,7 +408,7 @@ function App() {
       const d = t.datetime || (t.date.replace(/-/g,"")+"0930");
       const type=t.type==="buy"?"매수":"매도";
       const memo=(t.memo||"").replace(/,/g,"").replace(/\//g,"");
-      return `${t.ticker},${d},${t.price},${t.qty},${type},${memo}`;
+      return `${t.ticker},${d},${t.price},${Math.round(t.qty)},${type},${memo}`;
     });
     setTvData(lines.join("/"));
   }
