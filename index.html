@@ -402,14 +402,21 @@ function App() {
     setShowCorp(false);
   }
 
-  function genTVData(){
-    const lines=trades.filter(t=>t.type==="buy"||t.type==="sell").map(t=>{
-      // datetime(원본 YYYYMMDDHHMM) 있으면 그대로, 없으면 날짜+0930
-      const d = t.datetime || (t.date.replace(/-/g,"")+"0930");
-      const type=t.type==="buy"?"매수":"매도";
-      const memo=(t.memo||"").replace(/,/g,"").replace(/\//g,"");
-      return `${t.ticker},${d},${t.price},${Math.round(t.qty)},${type},${memo}`;
-    });
+  function genTVData() {
+    const lines = trades
+      .filter(t => t.type === "buy" || t.type === "sell")
+      .sort((a, b) => {
+        // 날짜(datetime)를 기준으로 최신순(내림차순) 정렬
+        const da = a.datetime || (a.date.replace(/-/g, "") + "0930");
+        const db = b.datetime || (b.date.replace(/-/g, "") + "0930");
+        return db.localeCompare(da); 
+      })
+      .map(t => {
+        const d = t.datetime || (t.date.replace(/-/g, "") + "0930");
+        const type = t.type === "buy" ? "매수" : "매도";
+        const memo = (t.memo || "").replace(/,/g, "").replace(/\//g, "");
+        return `${t.ticker},${d},${t.price},${Math.round(t.qty)},${type},${memo}`;
+      });
     setTvData(lines.join("/"));
   }
 
